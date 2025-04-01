@@ -2,31 +2,86 @@ package main
 
 import (
 	"fmt"
+	"github.com/codecrafters-io/http-server-starter-go/app/http"
 	"net"
 	"os"
+	"strings"
+	"sync"
 )
 
-func main() {
-	fmt.Println("Logs from your program will appear here!")
+var bufferPool sync.Pool = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 1024)
+	},
+}
 
+func main() {
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 	if err != nil {
 		fmt.Println("Failed to bind to port 4221")
 		os.Exit(1)
 	}
 
-	conn, err := l.Accept()
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
-	}
+	listen(l)
+}
 
-	_, err = conn.Write([]byte(HTTP{
-		Status: Status{Code: 200, Version: Version{1, 1}},
-	}.String()))
+func listen(l net.Listener) {
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
+
+		go acceptConnection(conn)
+	}
+}
+
+func acceptConnection(conn net.Conn) {
+	for {
+		req, err := read(conn)
+		if err != nil {
+			conn.Write([]byte(err.Error()))
+			continue
+		}
+		fmt.Println(req)
+
+		resp := http.Response{
+			Status: http.Status{
+				Code:    200,
+				Version: http.Version{Minor: 1, Major: 1},
+			},
+		}
+
+		if req.RequestLine.Target == "/" {
+			write(conn, resp.String())
+		} else {
+			resp.Status.Code = 404
+			write(conn, resp.String())
+		}
+
+		conn.Close()
+		return
+	}
+}
+
+func write(conn net.Conn, data string) {
+	_, err := conn.Write([]byte(data))
 	if err != nil {
 		fmt.Println("Failed to write response: ", err.Error())
 		os.Exit(1)
 	}
+}
+func read(conn net.Conn) (*http.Request, error) {
+	buffer := bufferPool.Get().([]byte)
+	defer bufferPool.Put(buffer)
 
+	res := strings.Builder{}
+	_, err := conn.Read(buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	res.Write(buffer)
+	return http.NewRequest(res.String())
 }

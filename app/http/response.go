@@ -1,4 +1,4 @@
-package main
+package http
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ const CRLF = "\r\n"
 
 type (
 	Version struct {
-		Mirror, Major int
+		Minor, Major int
 	}
 
 	StatusCode int
@@ -22,17 +22,14 @@ type (
 	}
 
 	Response struct {
-	}
-
-	HTTP struct {
 		Status   Status
 		Headers  Headers
-		Response Response
+		Response []byte
 	}
 )
 
-func (h HTTP) String() string {
-	return fmt.Sprint(h.Status, CRLF, h.Headers, CRLF)
+func (h Response) String() string {
+	return fmt.Sprint(h.Status, CRLF, h.Headers, CRLF, string(h.Response))
 }
 
 func (s Status) String() string {
@@ -42,7 +39,7 @@ func (s Status) String() string {
 func (h Headers) String() string {
 	var builder strings.Builder
 	for k, v := range h {
-		builder.WriteString(fmt.Sprintf("%s: %s\n", k, v))
+		builder.WriteString(fmt.Sprintf("%s: %s%s", k, v, CRLF))
 	}
 
 	return builder.String()
@@ -58,6 +55,8 @@ func (s StatusCode) String() string {
 	switch s {
 	case 200:
 		reason = "OK"
+	case 404:
+		reason = "Not Found"
 	default:
 		reason = ""
 	}
