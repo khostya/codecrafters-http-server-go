@@ -46,18 +46,14 @@ func acceptConnection(conn net.Conn) {
 		}
 		fmt.Println(req)
 
-		resp := http.Response{
-			Status: http.Status{
-				Code:    200,
-				Version: http.Version{Minor: 1, Major: 1},
-			},
-		}
-
-		if req.RequestLine.Target == "/" {
-			write(conn, resp.String())
+		if strings.HasPrefix(req.RequestLine.Target, "/echo") {
+			data := strings.TrimLeft(req.RequestLine.Target, "/echo")
+			resp := http.NewResponse(200, data)
+			write(conn, resp)
+		} else if req.RequestLine.Target == "/" {
+			write(conn, http.NewResponse(200, nil))
 		} else {
-			resp.Status.Code = 404
-			write(conn, resp.String())
+			write(conn, http.NewResponse(404, nil))
 		}
 
 		conn.Close()
@@ -65,8 +61,8 @@ func acceptConnection(conn net.Conn) {
 	}
 }
 
-func write(conn net.Conn, data string) {
-	_, err := conn.Write([]byte(data))
+func write(conn net.Conn, data *http.Response) {
+	_, err := conn.Write([]byte(data.String()))
 	if err != nil {
 		fmt.Println("Failed to write response: ", err.Error())
 		os.Exit(1)

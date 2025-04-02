@@ -28,6 +28,62 @@ type (
 	}
 )
 
+const (
+	textType       = "text/plain"
+	contentTypeKey = "Content-Type"
+	contentLength  = "Content-Length"
+)
+
+type Content struct {
+	Bytes       []byte
+	ContentType string
+}
+
+func getContentTypeAndLength(body any) *Content {
+	if body == nil {
+		return nil
+	}
+
+	switch body.(type) {
+	case string:
+		return &Content{
+			ContentType: textType,
+			Bytes:       []byte(body.(string)),
+		}
+	case []byte:
+		return &Content{
+			ContentType: textType,
+			Bytes:       body.([]byte),
+		}
+	default:
+		return nil
+	}
+}
+
+func NewResponse(code int, body any) *Response {
+	headers := make(map[string]string)
+
+	content := getContentTypeAndLength(body)
+	if content != nil {
+		headers[contentTypeKey] = content.ContentType
+		headers[contentLength] = strconv.Itoa(len(content.Bytes))
+	}
+
+	var bodyBytes []byte
+	if content != nil {
+		bodyBytes = content.Bytes
+	}
+
+	return &Response{
+		Status: Status{
+			Version: Version{1, 1},
+			Code:    StatusCode(code),
+		},
+		Headers:  headers,
+		Response: bodyBytes,
+	}
+}
+
 func (h Response) String() string {
 	return fmt.Sprint(h.Status, CRLF, h.Headers, CRLF, string(h.Response))
 }
