@@ -48,6 +48,10 @@ func acceptConnection(conn net.Conn) {
 
 		if strings.HasPrefix(req.RequestLine.Target, "/echo") {
 			data := strings.TrimLeft(req.RequestLine.Target, "/echo")
+			if len(data) > 0 && data[0] == '/' {
+				data = data[1:]
+			}
+
 			resp := http.NewResponse(200, data)
 			write(conn, resp)
 		} else if req.RequestLine.Target == "/" {
