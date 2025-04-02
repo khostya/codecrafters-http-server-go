@@ -58,9 +58,9 @@ func acceptConnection(conn net.Conn) {
 		case req.RequestLine.Target == "/user-agent":
 			resp = http.NewResponse(200, req.Headers.Get(http.UserAgentKey))
 		case req.RequestLine.Target == "/":
-			write(conn, http.NewResponse(200, nil))
+			resp = http.NewResponse(200, nil)
 		default:
-			write(conn, http.NewResponse(404, nil))
+			resp = http.NewResponse(404, nil)
 		}
 
 		write(conn, resp)
