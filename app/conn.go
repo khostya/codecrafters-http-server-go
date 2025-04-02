@@ -26,21 +26,10 @@ func acceptConnection(conn net.Conn) {
 			resp = http.NewResponse(200, req.Headers.Get(http.UserAgentKey))
 		case req.RequestLine.Target == "/":
 			resp = http.NewResponse(200, nil)
-		case strings.HasPrefix(req.RequestLine.Target, "/files"):
-			data := trimLeftUrl(req.RequestLine.Target, "/files")
-			filePath := dir + data
-			file, err := os.Open(filePath)
-			if err != nil {
-				if os.IsNotExist(err) {
-					resp = http.NewResponse(404, nil)
-				} else {
-					resp = http.NewResponse(500, nil)
-				}
-			} else {
-				resp = http.NewResponse(200, file)
-			}
-
-			file.Close()
+		case strings.HasPrefix(req.RequestLine.Target, "/files") && req.RequestLine.Method == "GET":
+			resp = filesGET(req)
+		case strings.HasPrefix(req.RequestLine.Target, "/files") && req.RequestLine.Method == "POST":
+			resp = filesPOST(req)
 		default:
 			resp = http.NewResponse(404, nil)
 		}
@@ -57,4 +46,34 @@ func trimLeftUrl(url string, cutset string) string {
 		data = data[1:]
 	}
 	return data
+}
+
+func filesGET(req *http.Request) *http.Response {
+	data := trimLeftUrl(req.RequestLine.Target, "/files")
+	filePath := dir + data
+	file, err := os.Open(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return http.NewResponse(404, nil)
+		}
+		return http.NewResponse(500, nil)
+	}
+	defer file.Close()
+	return http.NewResponse(200, file)
+}
+
+func filesPOST(req *http.Request) *http.Response {
+	data := trimLeftUrl(req.RequestLine.Target, "/files")
+	filePath := dir + data
+	file, err := os.Create(filePath)
+	if err != nil {
+		return http.NewResponse(500, nil)
+	}
+	_, err = file.Write(req.Body)
+	if err != nil {
+		return http.NewResponse(500, nil)
+	}
+
+	defer file.Close()
+	return http.NewResponse(201, file)
 }

@@ -14,7 +14,7 @@ func TestNewRequest(t *testing.T) {
 	}{
 		{
 			name: "GET with target",
-			args: args{s: "GET /index.html HTTP/1.1\r\n\r\n\r\n"},
+			args: args{s: "GET /index.html HTTP/1.1\r\n\r\n"},
 			want: Request{
 				RequestLine: RequestLine{
 					Method: "GET",
@@ -43,6 +43,24 @@ func TestNewRequest(t *testing.T) {
 					"User-Agent": "curl/7.64.1",
 					"Accept":     "*/*",
 				},
+			},
+		},
+		{
+			name: "POST with body",
+			args: args{s: "GET /index.html HTTP/1.1\r\nAccept: */*\r\n123\r\n"},
+			want: Request{
+				RequestLine: RequestLine{
+					Method: "GET",
+					Target: "/index.html",
+					Version: Version{
+						Minor: 1,
+						Major: 1,
+					},
+				},
+				Headers: map[string]string{
+					"Accept": "*/*",
+				},
+				Body: []byte("123"),
 			},
 		},
 	}

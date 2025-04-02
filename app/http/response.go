@@ -129,6 +129,8 @@ func (s StatusCode) String() string {
 		reason = "OK"
 	case 404:
 		reason = "Not Found"
+	case 201:
+		reason = "Created"
 	default:
 		reason = ""
 	}

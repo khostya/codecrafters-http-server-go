@@ -21,6 +21,8 @@ type (
 )
 
 func NewRequest(s string) (*Request, error) {
+	println(s)
+
 	sp := strings.Split(s, CRLF)
 	requestLine, err := parseRequestLine(sp[0])
 	if err != nil {
@@ -29,7 +31,7 @@ func NewRequest(s string) (*Request, error) {
 
 	sp = sp[1:]
 
-	body := sp[len(sp)-1]
+	body := sp[len(sp)-2]
 	sp = sp[:len(sp)-2]
 
 	headers := make(Headers)
@@ -93,5 +95,5 @@ func (h Request) String() string {
 }
 
 func (r RequestLine) String() string {
-	return fmt.Sprint(r.Method, " ", r.Target, "", r.Version.String())
+	return fmt.Sprint(r.Method, " ", r.Target, " ", r.Version.String())
 }
