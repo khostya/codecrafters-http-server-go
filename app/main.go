@@ -46,20 +46,24 @@ func acceptConnection(conn net.Conn) {
 		}
 		fmt.Println(req)
 
-		if strings.HasPrefix(req.RequestLine.Target, "/echo") {
+		var resp *http.Response
+		switch {
+		case strings.HasPrefix(req.RequestLine.Target, "/echo"):
 			data := strings.TrimLeft(req.RequestLine.Target, "/echo")
 			if len(data) > 0 && data[0] == '/' {
 				data = data[1:]
 			}
 
-			resp := http.NewResponse(200, data)
-			write(conn, resp)
-		} else if req.RequestLine.Target == "/" {
+			resp = http.NewResponse(200, data)
+		case req.RequestLine.Target == "/user-agent":
+			resp = http.NewResponse(200, req.Headers.Get(http.UserAgentKey))
+		case req.RequestLine.Target == "/":
 			write(conn, http.NewResponse(200, nil))
-		} else {
+		default:
 			write(conn, http.NewResponse(404, nil))
 		}
 
+		write(conn, resp)
 		conn.Close()
 		return
 	}

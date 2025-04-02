@@ -29,9 +29,10 @@ type (
 )
 
 const (
-	textType       = "text/plain"
-	contentTypeKey = "Content-Type"
-	contentLength  = "Content-Length"
+	textType         = "text/plain"
+	contentTypeKey   = "Content-Type"
+	UserAgentKey     = "User-Agent"
+	contentLengthKey = "Content-Length"
 )
 
 type Content struct {
@@ -66,7 +67,7 @@ func NewResponse(code int, body any) *Response {
 	content := getContentTypeAndLength(body)
 	if content != nil {
 		headers[contentTypeKey] = content.ContentType
-		headers[contentLength] = strconv.Itoa(len(content.Bytes))
+		headers[contentLengthKey] = strconv.Itoa(len(content.Bytes))
 	}
 
 	var bodyBytes []byte
@@ -117,4 +118,12 @@ func (s StatusCode) String() string {
 		reason = ""
 	}
 	return fmt.Sprint(strconv.Itoa(int(s)), " ", reason)
+}
+
+func (h Headers) Get(key string) string {
+	_, ok := h[key]
+	if !ok {
+		return ""
+	}
+	return h[key]
 }
