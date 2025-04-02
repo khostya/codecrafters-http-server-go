@@ -2,17 +2,19 @@ package main
 
 import (
 	"fmt"
-	"github.com/codecrafters-io/http-server-starter-go/app/http"
 	"net"
 	"os"
-	"strings"
-	"sync"
+	"slices"
 )
 
-var bufferPool sync.Pool = sync.Pool{
-	New: func() interface{} {
-		return make([]byte, 1024)
-	},
+var dir string
+
+func init() {
+	args := os.Args[1:]
+	idx := slices.Index(args, "--directory")
+	if idx != -1 && idx+1 < len(args) {
+		dir = args[idx+1]
+	}
 }
 
 func main() {
@@ -35,57 +37,4 @@ func listen(l net.Listener) {
 
 		go acceptConnection(conn)
 	}
-}
-
-func acceptConnection(conn net.Conn) {
-	for {
-		req, err := read(conn)
-		if err != nil {
-			conn.Write([]byte(err.Error()))
-			continue
-		}
-		fmt.Println(req)
-
-		var resp *http.Response
-		switch {
-		case strings.HasPrefix(req.RequestLine.Target, "/echo"):
-			data := strings.TrimLeft(req.RequestLine.Target, "/echo")
-			if len(data) > 0 && data[0] == '/' {
-				data = data[1:]
-			}
-
-			resp = http.NewResponse(200, data)
-		case req.RequestLine.Target == "/user-agent":
-			resp = http.NewResponse(200, req.Headers.Get(http.UserAgentKey))
-		case req.RequestLine.Target == "/":
-			resp = http.NewResponse(200, nil)
-		default:
-			resp = http.NewResponse(404, nil)
-		}
-
-		write(conn, resp)
-		conn.Close()
-		return
-	}
-}
-
-func write(conn net.Conn, data *http.Response) {
-	_, err := conn.Write([]byte(data.String()))
-	if err != nil {
-		fmt.Println("Failed to write response: ", err.Error())
-		os.Exit(1)
-	}
-}
-func read(conn net.Conn) (*http.Request, error) {
-	buffer := bufferPool.Get().([]byte)
-	defer bufferPool.Put(buffer)
-
-	res := strings.Builder{}
-	_, err := conn.Read(buffer)
-	if err != nil {
-		return nil, err
-	}
-
-	res.Write(buffer)
-	return http.NewRequest(res.String())
 }

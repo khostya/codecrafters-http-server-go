@@ -2,6 +2,9 @@ package http
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -30,6 +33,7 @@ type (
 
 const (
 	textType         = "text/plain"
+	appType          = "application/octet-stream"
 	contentTypeKey   = "Content-Type"
 	UserAgentKey     = "User-Agent"
 	contentLengthKey = "Content-Length"
@@ -55,6 +59,17 @@ func getContentTypeAndLength(body any) *Content {
 		return &Content{
 			ContentType: textType,
 			Bytes:       body.([]byte),
+		}
+	case *os.File:
+		data, err := io.ReadAll(body.(*os.File))
+		if err != nil {
+			log.Print(err)
+			return nil
+		}
+
+		return &Content{
+			ContentType: appType,
+			Bytes:       data,
 		}
 	default:
 		return nil
