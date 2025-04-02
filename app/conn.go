@@ -36,10 +36,10 @@ func acceptConnection(conn net.Conn) {
 				} else {
 					resp = http.NewResponse(500, nil)
 				}
-				continue
+			} else {
+				resp = http.NewResponse(200, file)
 			}
 
-			resp = http.NewResponse(200, file)
 			file.Close()
 		default:
 			resp = http.NewResponse(404, nil)
