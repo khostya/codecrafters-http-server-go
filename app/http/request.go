@@ -16,7 +16,7 @@ type (
 	Request struct {
 		RequestLine RequestLine
 		Headers     Headers
-		Body        []byte
+		Body        string
 	}
 )
 
@@ -31,7 +31,7 @@ func NewRequest(s string) (*Request, error) {
 
 	sp = sp[1:]
 
-	body := sp[len(sp)-2]
+	body := sp[len(sp)-1]
 	sp = sp[:len(sp)-2]
 
 	headers := make(Headers)
@@ -40,10 +40,18 @@ func NewRequest(s string) (*Request, error) {
 		headers[sp[0]] = sp[1]
 	}
 
+	var res []rune
+	for _, v := range body {
+		if v == '\x00' {
+			continue
+		}
+		res = append(res, v)
+	}
+
 	return &Request{
 		RequestLine: requestLine,
 		Headers:     headers,
-		Body:        []byte(body),
+		Body:        string(res),
 	}, nil
 }
 

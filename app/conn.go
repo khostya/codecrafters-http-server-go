@@ -69,7 +69,7 @@ func filesPOST(req *http.Request) *http.Response {
 	if err != nil {
 		return http.NewResponse(500, nil)
 	}
-	_, err = file.Write(req.Body)
+	_, err = file.WriteString(req.Body)
 	if err != nil {
 		return http.NewResponse(500, nil)
 	}
