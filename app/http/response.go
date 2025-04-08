@@ -1,9 +1,10 @@
 package http
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -32,57 +33,97 @@ type (
 )
 
 const (
-	textType         = "text/plain"
-	appType          = "application/octet-stream"
-	contentTypeKey   = "Content-Type"
-	UserAgentKey     = "User-Agent"
-	contentLengthKey = "Content-Length"
+	textType           = "text/plain"
+	appType            = "application/octet-stream"
+	contentTypeKey     = "Content-Type"
+	acceptEncodingKey  = "Accept-Encoding"
+	contentEncodingKey = "Content-Encoding"
+	UserAgentKey       = "User-Agent"
+	contentLengthKey   = "Content-Length"
 )
 
 type Content struct {
-	Bytes       []byte
-	ContentType string
+	Bytes           []byte
+	ContentType     string
+	ContentEncoding string
 }
 
-func getContentTypeAndLength(body any) *Content {
+func getContentTypeAndLength(body any, encoding string) (*Content, error) {
 	if body == nil {
-		return nil
+		return nil, nil
 	}
 
 	switch body.(type) {
 	case string:
+		data, contentEncoding, err := encode(encoding, []byte(body.(string)))
 		return &Content{
-			ContentType: textType,
-			Bytes:       []byte(body.(string)),
-		}
+			ContentType:     textType,
+			Bytes:           data,
+			ContentEncoding: contentEncoding,
+		}, err
 	case []byte:
+		data, contentEncoding, err := encode(encoding, body.([]byte))
 		return &Content{
-			ContentType: textType,
-			Bytes:       body.([]byte),
-		}
+			ContentType:     textType,
+			Bytes:           data,
+			ContentEncoding: contentEncoding,
+		}, err
 	case *os.File:
 		data, err := io.ReadAll(body.(*os.File))
 		if err != nil {
-			log.Print(err)
-			return nil
+			return nil, err
 		}
 
+		data, contentEncoding, err := encode(encoding, data)
 		return &Content{
-			ContentType: appType,
-			Bytes:       data,
-		}
+			ContentType:     appType,
+			ContentEncoding: contentEncoding,
+			Bytes:           data,
+		}, err
 	default:
-		return nil
+		return nil, fmt.Errorf("unsupported content type: %T", body)
 	}
 }
 
-func NewResponse(code int, body any) *Response {
+func encode(encoding string, data []byte) ([]byte, string, error) {
+	if encoding == "" {
+		return data, "", nil
+	}
+
+	if encoding == "gzip" {
+		var buf = new(bytes.Buffer)
+		gzipWriter := gzip.NewWriter(buf)
+
+		_, err := gzipWriter.Write(data)
+		if err != nil {
+			return nil, "", err
+		}
+		err = gzipWriter.Close()
+		if err != nil {
+			return nil, "", err
+		}
+		return buf.Bytes(), "gzip", nil
+	}
+
+	return data, "", nil
+}
+
+func NewResponse(code int, body any, requestHeaders Headers) (*Response, error) {
 	headers := make(map[string]string)
 
-	content := getContentTypeAndLength(body)
+	encoding := requestHeaders.Get(acceptEncodingKey)
+	content, err := getContentTypeAndLength(body, encoding)
+	if err != nil {
+		return nil, err
+	}
+
 	if content != nil {
 		headers[contentTypeKey] = content.ContentType
 		headers[contentLengthKey] = strconv.Itoa(len(content.Bytes))
+	}
+
+	if content != nil && content.ContentEncoding != "" {
+		headers[contentEncodingKey] = content.ContentEncoding
 	}
 
 	var bodyBytes []byte
@@ -97,7 +138,7 @@ func NewResponse(code int, body any) *Response {
 		},
 		Headers:  headers,
 		Response: bodyBytes,
-	}
+	}, nil
 }
 
 func (h Response) String() string {
